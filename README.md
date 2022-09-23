@@ -1,6 +1,6 @@
 # IndAppt
 
-**This project intends to help people who want to reserve IND desk appointments, and want to get , cannot wait in the long waiting list**
+**This project intends to help people who want to reserve IND desk appointments, and cannot wait in the long waiting list**
 
 **This code is provided as is and the writer has no guarantee on the usage of this code**
 
