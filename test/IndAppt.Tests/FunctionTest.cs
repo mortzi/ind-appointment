@@ -1,20 +1,16 @@
-using Xunit;
-using Amazon.Lambda.Core;
+using Amazon.Lambda.CloudWatchEvents;
 using Amazon.Lambda.TestUtilities;
+using Xunit;
 
 namespace IndAppt.Tests;
 
 public class FunctionTest
 {
     [Fact]
-    public void TestToUpperFunction()
+    public async Task TestToUpperFunction()
     {
-
-        // Invoke the lambda function and confirm the string was upper cased.
-        var function = new Function();
+        var function = new Function(new IndApptOptions());
         var context = new TestLambdaContext();
-        var upperCase = function.FunctionHandler("hello world", context);
-
-        Assert.Equal("HELLO WORLD", upperCase);
+        await function.FunctionHandler(new CloudWatchEvent<Details>(), context);
     }
 }
