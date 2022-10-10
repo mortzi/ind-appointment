@@ -7,13 +7,13 @@
 
 
 To run the application locally:
-- Have dotnet installed on your machine:
-  - Download and run Install dotnet script: https://dot.net/v1/dotnet-install.sh
+- Have dotnet 6.0 installed on your machine:
+  - Download and run Install: https://dotnet.microsoft.com/en-us/download or use dotnet install script: https://dot.net/v1/dotnet-install.sh
 - Clone this repository: 
 ```ps1
 git clone https://github.com/mortzi/ind-appointment.git
 ```
-- Replace appsettings.json content with your own settings:
+- Update appsettings.json content (at src/IndAppt/appsettings.json):
 ```json
 {
     "IndAppt": {
