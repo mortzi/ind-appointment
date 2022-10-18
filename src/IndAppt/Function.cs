@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using Amazon.Lambda.CloudWatchEvents;
-using Amazon.Lambda.Core;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -11,19 +10,22 @@ namespace IndAppt;
 
 public class Function
 {
+    private readonly ILogger<Function> _logger;
     private readonly IndApptOptions _options;
     private long? _chatId;
     private readonly ITelegramBotClient _telegramBotClient;
     private readonly HttpClient _httpClient;
 
-    public Function(IndApptOptions options)
+    public Function(
+        ILogger<Function> logger,
+        IndApptOptions options,
+        ITelegramBotClient telegramBotClient,
+        HttpClient httpClient)
     {
+        _logger = logger;
         _options = options;
-        _telegramBotClient = new TelegramBotClient(options.TelegramBot.ApiKey);
-        _httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(_options.IndBaseAddress)
-        };
+        _telegramBotClient = telegramBotClient;
+        _httpClient = httpClient;
     }
 
     private bool ConsiderSlot(Slot slot)
@@ -62,7 +64,7 @@ public class Function
         await SendMessage("stopping...");
     }
 
-    public async Task FunctionHandler(CloudWatchEvent<Details> input, ILambdaContext context)
+    public async Task FunctionHandler()
     {
         try
         {
@@ -70,13 +72,13 @@ public class Function
 
             if (!_isActive)
             {
-                context.Logger.LogInformation("Inactive state");
+                _logger.LogInformation("Inactive state");
                 return;
             }
 
-            context.Logger.LogInformation($"{DateTime.Now.ToShortTimeString()} | Running...");
+            _logger.LogInformation($"{DateTime.Now.ToShortTimeString()} | Running...");
 
-            var response = await GetAvailable(context);
+            var response = await GetAvailable();
             var preferredSlots = response.data.Where(ConsiderSlot).ToList();
 
             await SendMessage(
@@ -87,21 +89,21 @@ public class Function
                 var message =
                     $"{DateTime.Now.ToShortTimeString()} | Appointment found!\n\t{slot.date.ToShortDateString()} | {slot.startTime}-{slot.endTime}\n\t https://oap.ind.nl/oap/en/#/doc";
 
-                context.Logger.LogInformation(message);
+                _logger.LogInformation(message);
 
                 await SendMessage(message);
                 await SendMessage("Reserving appointment...");
 
-                context.Logger.LogInformation("Reserving appointment");
+                _logger.LogInformation("Reserving appointment");
 
-                await ReserveSlot(context, slot);
+                await ReserveSlot(slot);
 
-                context.Logger.LogInformation("Submitting appointment");
+                _logger.LogInformation("Submitting appointment");
 
-                await SubmitSlot(context, slot);
+                await SubmitSlot(slot);
 
                 await SendMessage("Appointment submitted. Check your email");
-                context.Logger.LogInformation("Appointment submitted");
+                _logger.LogInformation("Appointment submitted");
 
                 await Stop();
 
@@ -111,10 +113,10 @@ public class Function
         catch (Exception e)
         {
             await SendMessage($"Appointment check failed! Stopping... \nError:\n{e.Message}");
-            context.Logger.LogInformation($"{DateTime.Now.ToShortTimeString()} | Error occured {e}");
+            _logger.LogInformation($"{DateTime.Now.ToShortTimeString()} | Error occured {e}");
         }
 
-        context.Logger.LogInformation($"{DateTime.Now.ToShortTimeString()} | Paused...");
+        _logger.LogInformation($"{DateTime.Now.ToShortTimeString()} | Paused...");
     }
 
     private async Task SendMessage(string message)
@@ -123,7 +125,7 @@ public class Function
             await _telegramBotClient.SendTextMessageAsync(_chatId, message);
     }
 
-    private async Task SubmitSlot(ILambdaContext context, Slot slot)
+    private async Task SubmitSlot(Slot slot)
     {
         var httpResponseMessage = await _httpClient.PostAsJsonAsync(
             "appointments/",
@@ -139,12 +141,12 @@ public class Function
 
         if (response is not { status: "OK" })
         {
-            context.Logger.LogInformation($"Invalid response from IND book appointment api {payload}");
+            _logger.LogInformation($"Invalid response from IND book appointment api {payload}");
             throw new InvalidOperationException("Invalid response from IND book appointment api");
         }
     }
 
-    private async Task<AvalableResponse> GetAvailable(ILambdaContext context)
+    private async Task<AvalableResponse> GetAvailable()
     {
         var httpResponseMessage = await _httpClient.GetAsync("slots/?productKey=DOC&persons=1");
         httpResponseMessage.EnsureSuccessStatusCode();
@@ -154,14 +156,14 @@ public class Function
             _jsonSerializerOptions)!;
         if (response is not { status: "OK" })
         {
-            context.Logger.LogInformation($"Invalid response from IND appointment {payload}");
+            _logger.LogInformation($"Invalid response from IND appointment {payload}");
             throw new InvalidOperationException("Invalid response from IND appointment");
         }
 
         return response;
     }
 
-    private async Task ReserveSlot(ILambdaContext context, Slot slot)
+    private async Task ReserveSlot(Slot slot)
     {
         var responseMessage = await _httpClient.PostAsJsonAsync(
             $"slots/{slot.key}",
@@ -182,7 +184,7 @@ public class Function
         var response = JsonSerializer.Deserialize<ReserveSlotResponse>(payload[5..])!;
         if (response is not { status: "OK" })
         {
-            context.Logger.LogInformation($"Invalid response from IND appointment {payload}");
+            _logger.LogInformation($"Invalid response from IND appointment {payload}");
             throw new InvalidOperationException("Invalid response from IND appointment");
         }
     }
