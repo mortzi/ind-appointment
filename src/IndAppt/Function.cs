@@ -30,10 +30,10 @@ public class Function
 
     private bool ConsiderSlot(Slot slot)
     {
-        return slot.date >= _options.ReservationTimeBox.Start.Date &&
-               slot.date <= _options.ReservationTimeBox.End.Date &&
-               slot.startTime.Hour >= _options.ReservationTimeBox.Start.Hour &&
-               slot.endTime.Hour <= _options.ReservationTimeBox.End.Hour;
+        return slot.date >= _options.ReservationTimeBox.StartDate.Date &&
+               slot.date <= _options.ReservationTimeBox.EndDate.Date &&
+               slot.startTime.Hour >= _options.ReservationTimeBox.StartHour.Hours &&
+               slot.endTime.Hour <= _options.ReservationTimeBox.EndHour.Hours;
     }
 
 

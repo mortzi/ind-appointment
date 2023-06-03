@@ -26,6 +26,8 @@ public record class PersonalDetails
 
 public record class ReservationTimeBox
 {
-    public DateTime Start { get; set; }
-    public DateTime End { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public TimeSpan StartHour { get; set; }
+    public TimeSpan EndHour { get; set; }
 }
